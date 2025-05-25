@@ -1,181 +1,159 @@
-# Sistema de Controle para Pêndulo Invertido
+# Pêndulo Invertido com Controle PID
 
-## 1. Modelo Físico e Matemático
+Este projeto tem como objetivo modelar e controlar um sistema de pêndulo invertido utilizando controle PID, analisando sua estabilidade e resposta dinâmica tanto com controle simbólico quanto com parâmetros numéricos definidos pelo usuário.
 
-O pêndulo invertido é um sistema dinâmico não linear, formado por um pêndulo ligado a um carrinho que pode se mover ao longo de uma linha reta. O objetivo é controlar o movimento do carrinho de forma a manter o pêndulo invertido de maneira estável.
+## 1. Introdução
 
-### 1.1. Descrição Física
+O pêndulo invertido é um sistema clássico na teoria de controle, amplamente utilizado para testar técnicas de estabilização. Este projeto simula o comportamento do sistema utilizando a biblioteca `control` do Python.
 
-- \( M \): Massa do carrinho.
-- \( m \): Massa do pêndulo.
-- \( b \): Coeficiente de atrito.
-- \( l \): Comprimento do pêndulo.
-- \( I \): Inércia do pêndulo.
-- \( g \): Aceleração devido à gravidade.
-- \( x \): Posição do carrinho.
-- \( \theta \): Ângulo do pêndulo (em relação à vertical).
-- \( u \): Força aplicada no carrinho.
+## 2. Parâmetros do Sistema
 
-A dinâmica do sistema pode ser descrita pelas equações diferenciais de segunda ordem que modelam a posição do carrinho e a posição angular do pêndulo.
+| Parâmetro | Símbolo | Significado                           |
+|----------|---------|----------------------------------------|
+| M        | M       | Massa do carrinho                      |
+| m        | m       | Massa do pêndulo                       |
+| l        | l       | Distância do centro de massa ao ponto de rotação |
+| g        | g       | Aceleração da gravidade                |
+| I        | I       | Momento de inércia do pêndulo          |
+| b        | b       | Coeficiente de atrito do carrinho      |
 
-#### Equações de Movimento:
+## 3. Modelo Matemático
 
-As equações de movimento que descrevem o sistema podem ser derivadas usando a Lagrangiana, que é a diferença entre a energia cinética (\( T \)) e a energia potencial (\( V \)) do sistema. A equação de movimento resultante para as variáveis \( x \) e \( \theta \) é:
+### 3.1. Equações de Movimento (Newton-Euler)
 
-\[
-\frac{d^2 x}{dt^2} = \frac{m l}{M + m} \cdot \left( \frac{m l \cdot \frac{d^2 \theta}{dt^2} + m g \theta}{M + m} \right)
-\]
+Equação para o carrinho:
 
-\[
-\frac{d^2 \theta}{dt^2} = \frac{g \theta}{l}
-\]
+(M + m) * x'' + b * x' - m * l * θ'' * cos(θ) + m * l * (θ')² * sin(θ) = u
 
-Este modelo é amplamente utilizado para testar técnicas de controle, como o controle PID, que visa manter o pêndulo equilibrado enquanto o carrinho se move.
+Equação para o pêndulo:
+
+I * θ'' + m * l * x'' * cos(θ) + m * g * l * sin(θ) = 0
 
 ---
 
-## 2. Forma Matricial do Sistema
+### 3.2. Linearização (em torno de θ = 0)
 
-A forma de espaço de estados do sistema linearizado pode ser escrita como:
+Para pequenos ângulos, usa-se:
 
-\[
-\frac{dX}{dt} = A X + B u
-\quad , \quad
-Y = C X + D u
-\]
+- sin(θ) ≈ θ  
+- cos(θ) ≈ 1
 
-#### Vetor de estado:
+As equações linearizadas ficam:
 
-\[
-X = \begin{bmatrix}
-x \\
-\dot{x} \\
-\theta \\
-\dot{\theta}
-\end{bmatrix}
-\]
+(M + m) * x'' + b * x' - m * l * θ'' = u
 
-#### Vetor de entrada:
-
-\[
-u = \text{força aplicada no carrinho}
-\]
-
-#### Vetor de saída:
-
-\[
-Y = \begin{bmatrix}
-x \\
-\theta
-\end{bmatrix}
-\]
-
-#### Matriz A (dinâmica do sistema):
-
-\[
-A = 
-\begin{bmatrix}
-0 & 1 & 0 & 0 \\
-0 & \frac{-(I + m l^2) b}{D} & \frac{m^2 g l^2}{D} & 0 \\
-0 & 0 & 0 & 1 \\
-0 & \frac{-m l b}{D} & \frac{m g l (M + m)}{D} & 0
-\end{bmatrix}
-\]
-
-#### Matriz B (entrada):
-
-\[
-B = 
-\begin{bmatrix}
-0 \\
-\frac{I + m l^2}{D} \\
-0 \\
-\frac{m l}{D}
-\end{bmatrix}
-\]
-
-#### Matriz C (seleção da saída):
-
-\[
-C = 
-\begin{bmatrix}
-1 & 0 & 0 & 0 \\
-0 & 0 & 1 & 0
-\end{bmatrix}
-\]
-
-#### Matriz D (acoplamento direto da entrada à saída):
-
-\[
-D = 
-\begin{bmatrix}
-0 \\
-0
-\end{bmatrix}
-\]
-
-#### Denominador comum \( D \) (determinante auxiliar):
-
-\[
-D = I(M + m) + M m l^2
-\]
+I * θ'' + m * l * x'' + m * g * l * θ = 0
 
 ---
 
-## 3. Implementação Computacional
+## 4. Forma Matricial do Sistema
 
-O modelo do pêndulo invertido foi implementado utilizando o `SymPy` para cálculos simbólicos e o `Graphviz` para gerar diagramas de blocos do sistema de controle PID.
+Sistema linearizado na forma de espaço de estados:
 
-### 3.1. Código para Sistema Simbólico
+dX/dt = A * X + B * u  
+Y = C * X + D * u
 
-O código abaixo define as variáveis simbólicas do sistema, as equações de estado, e imprime as matrizes \( A \), \( B \), \( C \) e \( D \) em formato simbólico:
+Onde:
 
-```python
-import sympy as sp
+X = [x, x', θ, θ']ᵀ  
+u = força aplicada  
+Y = [x, θ]ᵀ
 
-# Definição de variáveis simbólicas
-x1, x2, x3, x4, u = sp.symbols('x1 x2 x3 x4 u')
-X = sp.Matrix([x1, x2, x3, x4])
-U = sp.Matrix([u])
-M, m, b, l, I, g = sp.symbols('M m b l I g')
-den = I*(M + m) + M*m*l**2
+---
 
-# Matrizes do sistema
-A = sp.Matrix([
-    [0, 1, 0, 0],
-    [0, -((I + m*l**2)*b)/den, (m**2)*g*l**2/den, 0],
-    [0, 0, 0, 1],
-    [0, -m*l*b/den, m*g*l*(M + m)/den, 0]
-])
+A =
 
-B = sp.Matrix([
-    [0],
-    [(I + m*l**2)/den],
-    [0],
-    [m*l/den]
-])
+|  0                                 1                      0                          0         |  
+|  0   -(I + m * l²) * b / D   (m² * g * l²) / D           0         |  
+|  0                                 0                      0                          1         |  
+|  0     -(m * l * b) / D     m * g * l * (M + m) / D       0         |
 
-C = sp.Matrix([
-    [1, 0, 0, 0],  # posição (x1)
-    [0, 0, 1, 0]   # ângulo θ (x3)
-])
+B =
 
-D = sp.Matrix([
-    [0],
-    [0]
-])
+|  0                       |  
+|  (I + m * l²) / D        |  
+|  0                       |  
+|  (m * l) / D             |
 
-def imprimir_matrizes():
-    print("\n=== Matriz A (dinâmica do sistema) ===")
-    sp.pprint(A)
-    print("\n=== Matriz B (entrada do sistema) ===")
-    sp.pprint(B)
-    print("\n=== Matriz C (saídas: posição e ângulo θ) ===")
-    sp.pprint(C)
-    print("\n=== Matriz D (influência direta da entrada na saída) ===")
-    sp.pprint(D)
+C =
 
-def sistema_simbólico():
-    imprimir_matrizes()
+| 1  0  0  0 |  
+| 0  0  1  0 |
 
-sistema_simbólico()
+D =
+
+| 0 |  
+| 0 |
+
+Com:
+
+D = I * (M + m) + M * m * l²
+
+---
+
+## 5. Função de Transferência
+
+Utilizando a transformada de Laplace nas equações linearizadas:
+
+### 5.1. Posição do Carrinho (x)
+
+Gx(s) = [l * m * s] / [s² * D + s * b * l * m - g * l * m * (M + m)]
+
+### 5.2. Ângulo do Pêndulo (θ)
+
+Gθ(s) = [g * l * (M + m)] / [s² * D + s * b * l * m - g * l * m * (M + m)]
+
+---
+
+## 6. Controle PID
+
+Controlador PID:
+
+PID(s) = Kp + Ki / s + Kd * s  
+       = (Kd * s² + Kp * s + Ki) / s
+
+---
+
+## 7. Malha Fechada
+
+A equação da malha fechada com realimentação unitária:
+
+T(s) = [G(s) * PID(s)] / [1 + G(s) * PID(s)]
+
+Aplicada separadamente para Gx(s) e Gθ(s), dependendo do objetivo de controle.
+
+---
+
+## 8. Análises Realizadas
+
+- Estabilidade (análise dos polos)  
+- Resposta ao degrau (sistema aberto e fechado)  
+- Diagramas de Bode e Nyquist  
+
+---
+
+## 9. Uso do Código
+
+O código pode operar em duas modalidades:
+
+- **Simbólica**: usando `sympy`, imprime funções de transferência completas.  
+- **Numérica**: o usuário define os parâmetros `Kp`, `Ki`, `Kd`, `M`, `m`, `l`, `b`, `I`, `g`.
+
+---
+
+## 10. Dependências
+
+- Python >= 3.10  
+- `control`  
+- `sympy`  
+- `matplotlib`  
+- `numpy`
+
+---
+
+## 11. Execução
+
+Para executar com parâmetros numéricos:
+
+```bash
+python Diagrama_blocos.py
